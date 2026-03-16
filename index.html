@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor Dólar - Dolarito</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Actualidad: Inter, 90s: VT323 or Share Tech Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050a15;
+            --dominant-blue: #0044ff;
+            --neon-blue: #00d0ff;
+            --neon-green: #00ff66;
+            --neon-green-dark: #00aa44;
+            --black-90s: #020205;
+            --text-light: #e0f0ff;
+            --glass-bg: rgba(0, 68, 255, 0.1);
+            --glass-border: rgba(0, 208, 255, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-light);
+            font-family: 'Space Grotesk', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            background-image: 
+                linear-gradient(rgba(0, 68, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 68, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            background-position: center center;
+            overflow-x: hidden;
+        }
+
+        /* Scanline effect (90s CRT) */
+        body::after {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            width: 100%;
+            z-index: 10;
+        }
+
+        h1 {
+            font-family: 'VT323', monospace;
+            font-size: 4rem;
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            text-shadow: 0 0 10px var(--dominant-blue), 0 0 20px var(--neon-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--neon-green);
+            font-family: 'VT323', monospace;
+            letter-spacing: 2px;
+        }
+
+        .update-time {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 10px;
+            display: inline-block;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid var(--dominant-blue);
+        }
+
+        /* Spinner */
+        #loader {
+            font-family: 'VT323', monospace;
+            font-size: 2rem;
+            color: var(--neon-green);
+            margin-top: 3rem;
+            animation: blink 1s infinite alternate;
+        }
+
+        @keyframes blink {
+            from { opacity: 1; }
+            to { opacity: 0.3; }
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 1200px;
+            z-index: 10;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(0, 68, 255, 0.4);
+            border-color: var(--neon-blue);
+        }
+
+        /* 90s cyber accent on cards */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--dominant-blue);
+            transition: width 0.3s ease;
+        }
+
+        .card:hover::before {
+            width: 10px;
+            background: var(--neon-green);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid rgba(0, 208, 255, 0.2);
+            padding-bottom: 0.8rem;
+        }
+
+        .card-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-light);
+            letter-spacing: 1px;
+            padding-left: 10px;
+        }
+
+        .rates {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+        }
+
+        .rate-box {
+            display: flex;
+            flex-direction: column;
+            width: 48%;
+        }
+
+        .rate-label {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            margin-bottom: 0.3rem;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .rate-value {
+            font-family: 'VT323', monospace;
+            font-size: 1.8rem;
+            color: var(--neon-green);
+            text-shadow: 0 0 5px var(--neon-green-dark);
+        }
+
+        .timestamp-small {
+            position: absolute;
+            bottom: 5px;
+            right: 15px;
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.3);
+            font-family: 'VT323', monospace;
+        }
+
+        .trend-icon {
+            font-size: 1rem;
+            margin-left: 5px;
+        }
+
+        .trend-up {
+            color: var(--neon-green);
+        }
+
+        .trend-down {
+            color: #ff3333;
+        }
+
+        .trend-flat {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .converter-box {
+            margin-top: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--neon-blue);
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-family: 'VT323', monospace;
+            font-size: 1.4rem;
+        }
+
+        .converter-box input, .converter-box select {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--dominant-blue);
+            color: var(--neon-green);
+            font-family: 'VT323', monospace;
+            font-size: 1.4rem;
+            padding: 5px;
+            margin: 0 10px;
+            outline: none;
+        }
+
+        .converter-box input:focus, .converter-box select:focus {
+            border-bottom-color: var(--neon-green);
+        }
+
+        .converter-box option {
+            background: var(--bg-color);
+            color: var(--neon-green);
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 3rem;
+            }
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Dolarito Vision</h1>
+        <div class="subtitle">SISTEMA DE COTIZACIONES v1.0</div>
+        <div class="update-time" id="main-update-time">Última actualización: --:--:--</div>
+        
+        <div class="converter-box" id="converter">
+            <span style="color: var(--neon-blue); margin-right: 10px;">></span>
+            <span style="color: var(--text-light); margin-right: 10px;">CONVERSOR:</span>
+            <input type="number" id="convert-amount" placeholder="Monto" min="0" step="any">
+            <select id="convert-currency">
+                <option value="ARS">Pesos (ARS)</option>
+                <option value="USD">Dólares (USD)</option>
+            </select>
+        </div>
+    </header>
+
+    <div id="loader">Cargando base de datos...</div>
+
+    <div class="dashboard" id="dashboard">
+        <!-- Cards will be injected here -->
+    </div>
+
+    <script>
+        // Fuente única de datos: dolarapi.com/v1/dolares
+        const apiDolares = 'https://dolarapi.com/v1/dolares';
+
+        let previousRates = {};
+        let currentRatesArray = [];
+
+        async function fetchDolarData() {
+            try {
+                const res = await fetch(apiDolares);
+                if (!res.ok) throw new Error('Error network response');
+                
+                const dolares = await res.json();
+
+                currentRatesArray = dolares;
+                renderCards();
+                
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                document.getElementById('main-update-time').innerText = `Última actualización: ${timeString}`;
+                document.getElementById('loader').style.display = 'none';
+            } catch (error) {
+                console.error("Error fetching data: ", error);
+                document.getElementById('loader').innerText = 'ERROR DE SISTEMA. REINTENTANDO...';
+            }
+        }
+
+        // Determina la tendencia de una tasa específica
+        function getTrendHtml(casa, type, currentValue) {
+            const key = `${casa}_${type}`;
+            const prevValue = previousRates[key];
+            
+            // Guardar para la próxima vez
+            previousRates[key] = currentValue;
+
+            if (!prevValue || prevValue === currentValue) {
+                return `<span class="trend-icon trend-flat">-</span>`;
+            } else if (currentValue > prevValue) {
+                return `<span class="trend-icon trend-up">▲</span>`;
+            } else {
+                return `<span class="trend-icon trend-down">▼</span>`;
+            }
+        }
+
+        // Formato para mostrar precios, reemplaza el punto por coma y asegurar 2 decimales si lo hay
+        function formatPrice(price) {
+            if (price === null || price === undefined) return '---';
+            if (price < 1) { // Para monedas muy baratas como el yen
+                return '$' + price.toLocaleString('es-AR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+            }
+            return '$' + price.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function renderCards() {
+            if (!currentRatesArray || currentRatesArray.length === 0) return;
+
+            const dashboard = document.getElementById('dashboard');
+            dashboard.innerHTML = ''; // Clear previous
+
+            const convertAmountInput = document.getElementById('convert-amount');
+            const convertCurrencySelect = document.getElementById('convert-currency');
+            
+            let multiplier = 1;
+            const amount = parseFloat(convertAmountInput.value);
+            const isPesosBase = convertCurrencySelect.value === 'ARS';
+
+            // Orden de aparición: los 7 tipos que devuelve /v1/dolares
+            const order = ['blue', 'oficial', 'bolsa', 'contadoconliqui', 'tarjeta', 'mayorista', 'cripto'];
+
+            const sortedDolares = [...currentRatesArray].sort((a, b) => {
+                // Notar que la API devuelve "bolsa" en lugar de "mep"
+                let cA = a.casa === 'mep' ? 'bolsa' : a.casa;
+                let cB = b.casa === 'mep' ? 'bolsa' : b.casa;
+                
+                let idxA = order.indexOf(cA);
+                let idxB = order.indexOf(cB);
+                return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+            });
+
+            sortedDolares.forEach(dolar => {
+                const updatedDate = new Date(dolar.fechaActualizacion);
+                const dateStr = updatedDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second:'2-digit' }) + ' ' + updatedDate.toLocaleDateString('es-AR');
+                
+                let title = dolar.nombre;
+                
+                let valCompra = dolar.compra;
+                let valVenta = dolar.venta;
+
+                const trendCompraHtml = getTrendHtml(dolar.casa, 'compra', valCompra);
+                const trendVentaHtml = getTrendHtml(dolar.casa, 'venta', valVenta);
+
+                // Aplicar lógica de la calculadora si hay un monto válido
+                if (!isNaN(amount) && amount > 0) {
+                    if (isPesosBase) {
+                        // Tengo X pesos, a cuantos billetes de esta moneda equivale (dividir)
+                        valCompra = amount / dolar.compra;
+                        valVenta = amount / dolar.venta;
+                    } else {
+                        // Tengo X dolares (o base 1), quiero saber cuantos pesos son (multiplicar)
+                        valCompra = amount * dolar.compra;
+                        valVenta = amount * dolar.venta;
+                    }
+                }
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="card-title">${title}</div>
+                    </div>
+                    <div class="rates">
+                        <div class="rate-box">
+                            <div class="rate-label">Compra</div>
+                            <div class="rate-value">${formatPrice(valCompra)} ${trendCompraHtml}</div>
+                        </div>
+                        <div class="rate-box" style="text-align: right; align-items: flex-end;">
+                            <div class="rate-label">Venta</div>
+                            <div class="rate-value">${formatPrice(valVenta)} ${trendVentaHtml}</div>
+                        </div>
+                    </div>
+                    <div class="timestamp-small">UPD: ${dateStr}</div>
+                `;
+                dashboard.appendChild(card);
+            });
+        }
+
+        // Setup calculadora event listeners
+        document.getElementById('convert-amount').addEventListener('input', renderCards);
+        document.getElementById('convert-currency').addEventListener('change', renderCards);
+
+        // Initialize and set interval for 1 minute (60000ms)
+        fetchDolarData();
+        setInterval(fetchDolarData, 60000);
+
+    </script>
+</body>
+</html>
