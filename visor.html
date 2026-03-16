@@ -294,62 +294,20 @@
     </div>
 
     <script>
-        // Use the public API dolarapi.com which provides identical 
-        // comprehensive dollar quotes as Dolarito.
+        // Fuente única de datos: dolarapi.com/v1/dolares
         const apiDolares = 'https://dolarapi.com/v1/dolares';
-        const apiCotizaciones = 'https://dolarapi.com/v1/cotizaciones';
-        const apiYen = 'https://open.er-api.com/v6/latest/USD'; // Para calcular el yen usando cruce USD -> JPY -> ARS
 
         let previousRates = {};
         let currentRatesArray = [];
 
         async function fetchDolarData() {
             try {
-                // Fetch de múltiples fuentes en paralelo
-                const [resDolares, resCotizaciones, resYen] = await Promise.all([
-                    fetch(apiDolares),
-                    fetch(apiCotizaciones),
-                    fetch(apiYen)
-                ]);
-
-                if (!resDolares.ok || !resCotizaciones.ok) throw new Error('Error network response');
+                const res = await fetch(apiDolares);
+                if (!res.ok) throw new Error('Error network response');
                 
-                const dolares = await resDolares.json();
-                const cotizaciones = await resCotizaciones.json();
-                
-                let yenRate = null;
-                if (resYen.ok) {
-                    const yenData = await resYen.json();
-                    // Cuantos yenes hay por dolar
-                    const jpyPerUsd = yenData.rates.JPY;
-                    // Dolar oficial
-                    const dolarOficial = dolares.find(d => d.casa === 'oficial');
-                    if (dolarOficial && jpyPerUsd) {
-                        // 1 Yen a Pesos (Precio del USD / JPY per USD)
-                        const compraYen = dolarOficial.compra / jpyPerUsd;
-                        const ventaYen = dolarOficial.venta / jpyPerUsd;
-                        yenRate = {
-                            casa: 'yen',
-                            nombre: 'Yen Japonés',
-                            compra: compraYen,
-                            venta: ventaYen,
-                            fechaActualizacion: new Date().toISOString()
-                        };
-                    }
-                }
+                const dolares = await res.json();
 
-                // Extraemos Euro y Real
-                const eur = cotizaciones.find(c => c.moneda === 'EUR');
-                const brl = cotizaciones.find(c => c.moneda === 'BRL');
-
-                // Juntar todos los datos
-                let combinedData = [...dolares];
-                // Parcheamos la propiedad "casa" para que funcione con el ordenamiento
-                if (eur) combinedData.push({...eur, nombre: 'Euro Oficial', casa: 'euro'});
-                if (brl) combinedData.push({...brl, nombre: 'Real Brasileño', casa: 'real'});
-                if (yenRate) combinedData.push(yenRate);
-
-                currentRatesArray = combinedData;
+                currentRatesArray = dolares;
                 renderCards();
                 
                 const now = new Date();
@@ -401,8 +359,8 @@
             const amount = parseFloat(convertAmountInput.value);
             const isPesosBase = convertCurrencySelect.value === 'ARS';
 
-            // Filtros para mostrar y ordenar
-            const order = ['blue', 'oficial', 'bolsa', 'contadoconliqui', 'tarjeta', 'mayorista', 'cripto', 'euro', 'real', 'yen'];
+            // Orden de aparición: los 7 tipos que devuelve /v1/dolares
+            const order = ['blue', 'oficial', 'bolsa', 'contadoconliqui', 'tarjeta', 'mayorista', 'cripto'];
 
             const sortedDolares = [...currentRatesArray].sort((a, b) => {
                 // Notar que la API devuelve "bolsa" en lugar de "mep"
